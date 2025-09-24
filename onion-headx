@@ -9,51 +9,62 @@
       box-sizing: border-box;
     }
 
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      height: 100%;
       font-family: sans-serif;
+    }
+
+    body {
       display: flex;
-      height: 100vh;
+      flex-direction: row;
       background: white;
-      color: black;
     }
 
     aside {
       width: 300px;
       padding: 20px;
-      border-right: 1px solid #ccc;
       background: #f9f9f9;
+      border-right: 1px solid #ddd;
     }
 
     main {
       flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
       padding: 20px;
-      overflow-y: auto;
     }
 
     textarea {
       width: 100%;
-      height: 200px;
-      margin-bottom: 15px;
-      font-size: 14px;
-      padding: 10px;
+      height: 120px;
       resize: vertical;
+      padding: 8px;
+      font-size: 14px;
     }
 
     label {
       display: block;
-      margin-top: 10px;
+      margin-top: 12px;
       font-weight: bold;
     }
 
-    input[type="range"] {
+    input[type="range"],
+    input[type="number"] {
       width: 100%;
+      margin-top: 5px;
     }
 
-    #output {
+    .collage-box {
       display: flex;
       flex-wrap: wrap;
-      align-items: flex-start;
+      align-content: flex-start;
+      overflow: auto;
+      background: white;
+      border: 2px solid black;
+      padding: 16px;
     }
 
     .word {
@@ -66,7 +77,9 @@
 <body>
 
   <aside>
-    <h2>Text Controls</h2>
+    <h2>Collage Controls</h2>
+
+    <label for="inputText">Your Text</label>
     <textarea id="inputText">im over here Carmelizing my Onions rn i got Onions in my pan rn im cooking my shit, it's fragrant as fuck man im a Chef man</textarea>
 
     <label for="chaosRange">Chaos Level</label>
@@ -77,22 +90,42 @@
       Multicolor text
     </label>
 
-    <button onclick="generate()">Generate</button>
+    <label>
+      <input type="checkbox" id="fontChaosCheckbox" checked />
+      Use many fonts
+    </label>
+
+    <label for="boxWidth">Box Width (px)</label>
+    <input type="number" id="boxWidth" value="600" min="200" max="1200" />
+
+    <label for="boxHeight">Box Height (px)</label>
+    <input type="number" id="boxHeight" value="400" min="200" max="1000" />
   </aside>
 
   <main>
-    <div id="output"></div>
+    <div id="output" class="collage-box"></div>
   </main>
 
   <script>
-    const fonts = [
+    const fullFontList = [
       "Arial", "Courier New", "Comic Sans MS", "Georgia",
       "Impact", "Lucida Console", "Palatino Linotype", "Tahoma",
       "Times New Roman", "Trebuchet MS", "Verdana", "Garamond"
     ];
 
-    function getRandomFont() {
-      return fonts[Math.floor(Math.random() * fonts.length)];
+    const limitedFonts = ["Helvetica", "Arial", "sans-serif"];
+
+    const inputText = document.getElementById('inputText');
+    const chaosRange = document.getElementById('chaosRange');
+    const colorCheckbox = document.getElementById('colorCheckbox');
+    const fontChaosCheckbox = document.getElementById('fontChaosCheckbox');
+    const boxWidthInput = document.getElementById('boxWidth');
+    const boxHeightInput = document.getElementById('boxHeight');
+    const output = document.getElementById('output');
+
+    function getRandomFont(useManyFonts) {
+      const fontList = useManyFonts ? fullFontList : limitedFonts;
+      return fontList[Math.floor(Math.random() * fontList.length)];
     }
 
     function getRandomColor() {
@@ -104,30 +137,51 @@
       return color;
     }
 
-    function generate() {
-      const input = document.getElementById('inputText').value;
-      const output = document.getElementById('output');
-      const chaos = parseInt(document.getElementById('chaosRange').value);
-      const useColor = document.getElementById('colorCheckbox').checked;
+    function maybeCapitalize(word) {
+      if (word.match(/[A-Z]/)) return word; // already has caps
+      if (Math.random() < 0.1) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    }
+
+    function updateCollage() {
+      const chaos = parseInt(chaosRange.value);
+      const useColor = colorCheckbox.checked;
+      const useManyFonts = fontChaosCheckbox.checked;
+      const width = parseInt(boxWidthInput.value);
+      const height = parseInt(boxHeightInput.value);
+      const words = inputText.value.trim().split(/\s+/);
+
+      // Apply box dimensions
+      output.style.width = `${width}px`;
+      output.style.height = `${height}px`;
 
       output.innerHTML = '';
 
-      const words = input.split(' ');
-
-      words.forEach(word => {
+      words.forEach((word, index) => {
         const span = document.createElement('span');
-        span.classList.add('word');
-        span.textContent = word;
+        span.className = 'word';
 
-        // Chaos scale affects size, letter spacing, and boldness
-        const minSize = 14 + chaos * 2;
-        const maxSize = 24 + chaos * 6;
+        // Font size logic: shorter words are bigger
+        const baseSize = 24;
+        const adjustedSize = Math.max(12, baseSize + (5 - word.length));
+        const randomSize = adjustedSize + Math.random() * chaos * 2;
 
-        span.style.fontFamily = getRandomFont();
-        span.style.fontSize = `${Math.floor(Math.random() * (maxSize - minSize) + minSize)}px`;
+        // Random rotation, small and rare
+        const rotate = (Math.random() < 0.17) ? ((Math.random() - 0.5) * chaos * 2) : 0;
+
+        // Stretching words a bit in x/y randomly
+        const scaleX = 1 + (Math.random() - 0.5) * 0.3 * chaos;
+        const scaleY = 1 + (Math.random() - 0.5) * 0.3 * chaos;
+
+        span.textContent = maybeCapitalize(word);
+        span.style.fontSize = `${randomSize}px`;
+        span.style.fontFamily = getRandomFont(useManyFonts);
         span.style.fontWeight = Math.random() > 0.5 ? 'bold' : 'normal';
-        span.style.letterSpacing = `${Math.random() * chaos * 1.2}px`;
-        span.style.transform = `rotate(${(Math.random() - 0.5) * chaos * 4}deg)`;
+        span.style.transform = `rotate(${rotate.toFixed(2)}deg) scale(${scaleX.toFixed(2)}, ${scaleY.toFixed(2)})`;
+        span.style.letterSpacing = `${(Math.random() - 0.5) * chaos}px`;
+        span.style.lineHeight = '1';
 
         if (useColor) {
           span.style.color = getRandomColor();
@@ -139,8 +193,12 @@
       });
     }
 
-    // Auto generate on load
-    window.onload = generate;
+    // Attach all listeners for real-time updates
+    [inputText, chaosRange, colorCheckbox, fontChaosCheckbox, boxWidthInput, boxHeightInput].forEach(el => {
+      el.addEventListener('input', updateCollage);
+    });
+
+    window.onload = updateCollage;
   </script>
 
 </body>
